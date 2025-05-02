@@ -244,10 +244,7 @@ Upon receiving the enrollment request, the server performs the following steps:
 5. **Return Response**: The `deviceId`, encoded certificate, and renewal period are returned to the client.
 If any validation fails, an HTTP error status is returned.
 
-### 2.1.2 checkin (Preview)
-
-> **NOTE**: The actual path segment after the base URI for this request is still
-being investigated.
+### 2.1.2 details
 
 The following HTTP methods are allowed to be performed on this resource.
 
@@ -272,7 +269,7 @@ The following HTTP methods are allowed to be performed on this resource.
   <p>2.1.2.1</p>
   </td>
   <td>
-  <p>Device check-in for Intune MDM policy enforcement.</p>
+  <p>Supply device details for the Intune enrolled device.</p>
   </td>
  </tr>
 </tbody></table>
@@ -284,7 +281,7 @@ This method is transported by an HTTP POST.
 The method is invoked through the LinuxDeviceCheckinService URI discovered
 via [Service Discovery](#service-endpoint-discovery-response-body).
 
-##### 2.1.2.1.1 <a id="checkin-request-body"></a> Request Body
+##### 2.1.2.1.1 <a id="details-request-body"></a> Request Body
 
 The request body contains the following JSON-formatted object.
 
@@ -305,13 +302,43 @@ __OSDistribution__: The Linux distribution of the device. Required.
 
 __OSVersion__: The version string of the Linux distribution. Required.
 
-##### 2.1.2.1.2 <a id="checkin-response-body"></a> Response Body
+##### 2.1.2.1.2 <a id="details-response-body"></a> Response Body
 
-> **NOTE**: The checkin response is still being investigated.
+If the service successfully receives device details, an HTTP 200 status code is
+returned. Additionally, the response body for the POST response contains a
+JSON-formatted object, as defined below. See section
+[2.1.1.1.3](#details-processing-details) for processing details.
 
-##### 2.1.2.1.3 <a id="checkin-processing-details"></a> Processing Details
+<pre class="has-inner-focus">
+<code class="lang-json">{
+    "deviceFriendlyName": string
+}
+</code></pre>
 
-> **NOTE**: The checkin request/response is still being investigated.
+__deviceFriendlyName__: The friendly name for the device.
+
+##### 2.1.2.1.3 <a id="details-processing-details"></a> Processing Details
+
+Upon receiving a `POST` request to the `details` sub-endpoint, the LinuxDeviceCheckinService performs the following actions:
+
+1. **Validate Payload**:
+   The server verifies that all required fields (`DeviceName`, `Manufacturer`, `OSDistribution`, and `OSVersion`) are present and non-empty. If any required field is missing or malformed, the service responds with a 400 Bad Request HTTP status.
+
+2. **Normalize Input**:
+   Input fields MAY be normalized or sanitized. For example, the `DeviceName` may be truncated to a maximum length or stripped of invalid characters for consistency across the portal interface.
+
+3. **Update Device Metadata**:
+   If the device is already registered with Intune (based on prior enrollment), the provided details are stored or updated in the Intune device record associated with the device’s ID or authentication context.
+
+4. **Acknowledge with Friendly Name**:
+   The response includes a `deviceFriendlyName`, which may be:
+   - A sanitized version of the provided `DeviceName`, or
+   - A name determined by Intune policy, tenant configuration, or service-side logic.
+
+5. **No Token or Session Change**:
+   This operation does not alter the device's registration state or authentication session. It is used solely for populating metadata for display in the Intune portal or for policy evaluation purposes.
+
+If the device is unknown or not currently enrolled, the server MAY reject the request with an HTTP `401 Unauthorized`.
 
 ### 2.1.3 Intune Service Endpoint Discovery
 
@@ -546,13 +573,16 @@ Content-type: application/json
 }
 </code></pre>
 
-## 3.2 Intune Linux Checkin
+## 3.2 Intune Linux Device Details
 
-Cause the Linux Intune enrolled host to checkin for policy enforcement.
+Supply device details for the Linux Intune enrolled host.
 
 ### HTTP Request
 
-> **NOTE**: The checkin request is still being investigated.
+<pre class="has-inner-focus">
+<code class="lang-http"><span>
+POST {LinuxDeviceCheckinServiceURI}/details?api-version=1.0&client-version=1.2405.17
+</span></code></pre>
 
 ### Request Headers
 
@@ -620,24 +650,50 @@ Company Portal for Linux UUID.
 
 ### Request body
 
-In the request body, supply a JSON representation of a Linux checkin
-request, as specified in [section 2.1.2.1.1](#checkin-request-body).
+In the request body, supply a JSON representation of a Linux device details
+request, as specified in [section 2.1.2.1.1](#details-request-body).
 
 ### Response
 
-> **NOTE**: The checkin response is still being investigated.
+If successful, this method returns a 200 response code and a device friendly
+name in the response body, as specified in
+[section 2.1.1.1.2](#details-response-body).
 
 ### Example
 
-> **NOTE**: The checkin request/response is still being investigated.
+The following example shows a request to the Linux Device Checkin Service endpoint
+to supply device details for the host ([section 2.1.2.1.1](#details-request-body))
+and the response ([section 2.1.2.1.2](#details-response-body)).
 
 ### Request
 
-> **NOTE**: The checkin request/response is still being investigated.
+Here is an example of the request.
+
+<pre class="has-inner-focus">
+<code class="lang-json">POST https://fef.msua08.manage.microsoft.com/TrafficGateway/TrafficRoutingService/LinuxMdm/LinuxDeviceCheckinService/details?api-version=1.0&client-version=1.2405.17
+Content-type: application/json
+
+{
+  "DeviceId": "8077ec2c-abca-46d2-9621-a0f06a460f96",
+  "DeviceName": "openSUSE-Laptop",
+  "Manufacturer": "Lenovo",
+  "OSDistribution": "openSUSE Tumbleweed",
+  "OSVersion": "20241211"
+}
+</code></pre>
 
 ### Response
 
-> **NOTE**: The checkin request/response is still being investigated.
+Here is an example of the response.
+
+<pre class="has-inner-focus">
+<code class="lang-json">HTTP/1.1 200
+Content-type: application/json
+
+{
+  "deviceFriendlyName": ""
+}
+</code></pre>
 
 ## 3.3 Intune Service Endpoint Discovery
 
