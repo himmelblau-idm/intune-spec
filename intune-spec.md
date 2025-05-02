@@ -106,6 +106,23 @@ Intune for Linux enrollment and checkin specification
   </td>
  </tr>
 
+ <tr>
+  <td>
+  <p>05/02/2025</p>
+  </td>
+  <td>
+  <p>0.02</p>
+  </td>
+  <td>
+  <p>details and status messages documented</p>
+  </td>
+  <td>
+  <p>
+
+  </p>
+  </td>
+ </tr>
+
 </tbody></table>
 
 # 1 Introduction
