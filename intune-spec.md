@@ -244,7 +244,7 @@ Upon receiving the enrollment request, the server performs the following steps:
 5. **Return Response**: The `deviceId`, encoded certificate, and renewal period are returned to the client.
 If any validation fails, an HTTP error status is returned.
 
-### 2.1.2 details
+### 2.1.2 <a id="2.1.2-details"></a> details
 
 The following HTTP methods are allowed to be performed on this resource.
 
@@ -307,7 +307,7 @@ __OSVersion__: The version string of the Linux distribution. Required.
 If the service successfully receives device details, an HTTP 200 status code is
 returned. Additionally, the response body for the POST response contains a
 JSON-formatted object, as defined below. See section
-[2.1.1.1.3](#details-processing-details) for processing details.
+[2.1.2.1.3](#details-processing-details) for processing details.
 
 <pre class="has-inner-focus">
 <code class="lang-json">{
@@ -340,7 +340,95 @@ Upon receiving a `POST` request to the `details` sub-endpoint, the LinuxDeviceCh
 
 If the device is unknown or not currently enrolled, the server MAY reject the request with an HTTP `401 Unauthorized`.
 
-### 2.1.3 Intune Service Endpoint Discovery
+### 2.1.3 status
+
+The following HTTP methods are allowed to be performed on this resource.
+
+<table class="protocol-table"><thead>
+  <tr>
+   <th>
+   <p>HTTP method</p>
+   </th>
+   <th>
+   <p>Section</p>
+   </th>
+   <th>
+   <p>Description</p>
+   </th>
+  </tr>
+ </thead><tbody>
+ <tr>
+  <td>
+  <p>POST</p>
+  </td>
+  <td>
+  <p>2.1.3.1</p>
+  </td>
+  <td>
+  <p>Check the status of Intune policy enforcement.</p>
+  </td>
+ </tr>
+</tbody></table>
+
+#### 2.1.3.1 POST
+
+This method is transported by an HTTP POST.
+
+The method is invoked through the LinuxDeviceCheckinService URI discovered
+via [Service Discovery](#service-endpoint-discovery-response-body).
+
+##### 2.1.3.1.1 <a id="status-request-body"></a> Request Body
+
+The request body contains the following JSON-formatted object.
+
+<pre class="has-inner-focus">
+<code class="lang-json">{
+  "DeviceId": string
+}
+</code></pre>
+
+__DeviceId__: The Intune Device ID. Required.
+
+##### 2.1.3.1.2 <a id="status-response-body"></a> Response Body
+
+If the request is successful, an HTTP 200 status code is
+returned. Additionally, the response body for the POST response contains a
+JSON-formatted object, as defined below. See section
+[2.1.3.1.3](#status-processing-details) for processing details.
+
+<pre class="has-inner-focus">
+<code class="lang-json">{
+    "policyStatuses": array
+}
+</code></pre>
+
+__policyStatuses__: A list of statuses for policy enforcement actions.
+
+##### 2.1.3.1.3 <a id="status-processing-details"></a> Processing Details
+
+Upon receiving a valid request, the server performs the following processing steps:
+
+1. **Device Validation**:
+   - The `DeviceId` is extracted from the request body.
+   - The server verifies that the device is known and enrolled with Intune.
+   - If the `DeviceId` is invalid or not recognized, the server returns an HTTP 400 Bad Request with a JSON error payload indicating `"Device validation failed"`.
+
+2. **Policy Retrieval**:
+   - If the device is valid, the server retrieves any pending, active, or recently completed policy enforcement tasks associated with the device.
+   - This includes configuration profiles, compliance checks, and application assignments scheduled for enforcement on the device.
+
+3. **State Considerations**:
+   - If the device has not yet submitted host metadata via the [`details`](#2.1.2-details) endpoint, or is not in a fully enrolled state, the server may return an empty `policyStatuses` array.
+   - Some policies may only appear after the device has been evaluated for compliance or has been assigned applicable configuration.
+
+4. **Response Construction**:
+   - The server responds with HTTP status `200 OK` if the request is valid and the device is recognized.
+   - The response body contains a `policyStatuses` array. If no actions are pending or applicable, this array is empty.
+   - The schema of individual `policyStatuses` entries is currently undocumented and may vary based on tenant policy configurations and device state.
+
+This endpoint is intended for polling the current policy enforcement state and does not initiate compliance evaluation or configuration deployment. Clients should ensure the device has completed enrollment and reported host details before using this endpoint.
+
+### 2.1.4 Intune Service Endpoint Discovery
 
 The following HTTP methods are allowed to be performed on this resource.
 
@@ -362,7 +450,7 @@ The following HTTP methods are allowed to be performed on this resource.
   <p>GET</p>
   </td>
   <td>
-  <p>2.1.3.1</p>
+  <p>2.1.4.1</p>
   </td>
   <td>
   <p>List the service endpoints associated with Intune.</p>
@@ -370,17 +458,17 @@ The following HTTP methods are allowed to be performed on this resource.
  </tr>
 </tbody></table>
 
-#### 2.1.3.1 GET
+#### 2.1.4.1 GET
 
 This method is transported by an HTTP GET.
 
 The method is invoked through the Microsoft Graph.
 
-##### 2.1.3.1.1 <a id="service-endpoint-discovery-request-body"></a> Request Body
+##### 2.1.4.1.1 <a id="service-endpoint-discovery-request-body"></a> Request Body
 
 Empty.
 
-##### 2.1.3.1.2 <a id="service-endpoint-discovery-response-body"></a> Response Body
+##### 2.1.4.1.2 <a id="service-endpoint-discovery-response-body"></a> Response Body
 
 The response body contains the following JSON-formatted object.
 
@@ -419,7 +507,7 @@ client-id.
 
 - __uri__: A string URI used to invoke the service endpoint.
 
-##### 2.1.3.1.3 <a id="service-endpoint-discovery-details"></a> Processing Details
+##### 2.1.4.1.3 <a id="service-endpoint-discovery-details"></a> Processing Details
 
 The service endpoint discovery request MUST be issued by an Entra ID-hosted client using an access token scoped to the Microsoft Graph resource.
 
@@ -657,7 +745,7 @@ request, as specified in [section 2.1.2.1.1](#details-request-body).
 
 If successful, this method returns a 200 response code and a device friendly
 name in the response body, as specified in
-[section 2.1.1.1.2](#details-response-body).
+[section 2.1.2.1.2](#details-response-body).
 
 ### Example
 
@@ -695,7 +783,124 @@ Content-type: application/json
 }
 </code></pre>
 
-## 3.3 Intune Service Endpoint Discovery
+## 3.3 Intune Linux Policy Status
+
+Check the status of Linux Intune policy enforcement.
+
+### HTTP Request
+
+<pre class="has-inner-focus">
+<code class="lang-http"><span>
+POST {LinuxDeviceCheckinServiceURI}/status?api-version=1.0&client-version=1.2405.17
+</span></code></pre>
+
+### Request Headers
+
+<table class="protocol-table"><thead>
+  <tr>
+   <th>
+   <p>Name</p>
+   </th>
+   <th>
+   <p>Description</p>
+   </th>
+  </tr>
+ </thead><tbody>
+ <tr>
+  <td>
+  <p>Content-type</p>
+  </td>
+  <td>
+  <p>application/json</p>
+  </td>
+ </tr>
+ <tr>
+  <td>
+  <p>Authorization</p>
+  </td>
+  <td>
+  <p>Bearer {token}. Required.</p>
+  </td>
+ </tr>
+</tbody></table>
+
+The authorization token MUST be granted via an on-behalf-of flow from an Entra
+Id enrolled host. The requested resource MUST be the Microsoft Intune Company
+Portal UUID and the on-behalf-of client-id MUST be the Microsoft Intune
+Company Portal for Linux UUID.
+
+<table class="protocol-table"><thead>
+
+  <tr>
+   <th>
+   <p>UUID</p>
+   </th>
+   <th>
+   <p>Description</p>
+   </th>
+  </tr>
+ </thead><tbody>
+ <tr>
+  <td>
+  <p>0000000a-0000-0000-c000-000000000000</p>
+  </td>
+  <td>
+  <p>Microsoft Intune Company Portal</p>
+  </td>
+ </tr>
+ <tr>
+  <td>
+  <p>b743a22d-6705-4147-8670-d92fa515ee2b</p>
+  </td>
+  <td>
+  <p>Microsoft Intune Company Portal for Linux</p>
+  </td>
+ </tr>
+</tbody></table>
+
+### Request body
+
+In the request body, supply a JSON representation of a Linux policy status
+request, as specified in [section 2.1.3.1.1](#status-request-body).
+
+### Response
+
+If successful, this method returns a 200 response code and a list of policy statuses
+in the response body, as specified in [section 2.1.3.1.2](#status-response-body).
+
+### Example
+
+The following example shows a request to the Linux Device Checkin Service endpoint
+to check the policy status for the host ([section 2.1.3.1.1](#status-request-body))
+and the response ([section 2.1.3.1.2](#status-response-body)).
+
+### Request
+
+Here is an example of the request.
+
+<pre class="has-inner-focus">
+<code class="lang-json">POST https://fef.msua08.manage.microsoft.com/TrafficGateway/TrafficRoutingService/LinuxMdm/LinuxDeviceCheckinService/status?api-version=1.0&client-version=1.2405.17
+Content-type: application/json
+
+{
+  "DeviceId": "8077ec2c-abca-46d2-9621-a0f06a460f96"
+}
+</code></pre>
+
+### Response
+
+Here is an example of the response.
+
+<pre class="has-inner-focus">
+<code class="lang-json">HTTP/1.1 200
+Content-type: application/json
+
+{
+  "policyStatuses": []
+}
+</code></pre>
+
+## 3.4 Intune Service Endpoint Discovery
 
 List the service endpoints associated with Intune.
 
@@ -778,12 +983,12 @@ Empty.
 
 If successful, this method returns a 200 response code a json list of
 service endpoints, as specified in
-[section 2.1.3.1.2](#service-endpoint-discovery-response-body).
+[section 2.1.4.1.2](#service-endpoint-discovery-response-body).
 
 ### Example
 
 The following example shows a response from the Microsoft Graph for Intune
-service endpoints ([section 2.1.3.1.2](#service-endpoint-discovery-response-body)).
+service endpoints ([section 2.1.4.1.2](#service-endpoint-discovery-response-body)).
 
 ### Request
 
