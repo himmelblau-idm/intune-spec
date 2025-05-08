@@ -119,6 +119,19 @@ Intune for Linux enrollment and checkin specification
   <td>
   <p>
 
+ <tr>
+  <td>
+  <p>05/08/2025</p>
+  </td>
+  <td>
+  <p>0.03</p>
+  </td>
+  <td>
+  <p>Policy listing details documented</p>
+  </td>
+  <td>
+  <p>
+
   </p>
   </td>
  </tr>
@@ -540,6 +553,115 @@ Upon a successful response, the client MUST:
 3. **Cache Results Appropriately**: Clients SHOULD cache the discovered endpoints in memory for the lifetime of the session or until invalidated. Service discovery SHOULD be repeated each time a checkin is performed.
 
 If the service does not return the expected capabilities, the client MUST treat the response as non-actionable and fail gracefully.
+
+## 2.1.5 policies
+
+The following HTTP methods are allowed to be performed on this resource.
+
+<table class="protocol-table"><thead>
+  <tr>
+   <th>
+   <p>HTTP method</p>
+   </th>
+   <th>
+   <p>Section</p>
+   </th>
+   <th>
+   <p>Description</p>
+   </th>
+  </tr>
+ </thead><tbody>
+ <tr>
+  <td>
+  <p>GET</p>
+  </td>
+  <td>
+  <p>2.1.5.1</p>
+  </td>
+  <td>
+  <p>Retrieve device policies for the Linux Intune enrolled device.</p>
+  </td>
+ </tr>
+</tbody></table>
+
+#### 2.1.5.1 GET
+
+This method is transported by an HTTP GET.
+
+The method is invoked through the LinuxDeviceCheckinService URI discovered via [Service Discovery](#service-endpoint-discovery-response-body).
+
+##### 2.1.5.1.1 <a id="policies-request-body"></a> Request Body
+
+Empty.
+
+##### 2.1.5.1.2 <a id="policies-response-body"></a> Response Body
+
+The response body contains the following JSON-formatted object.
+
+<pre class="has-inner-focus">
+<code class="lang-json">{
+  "policies": [
+    {
+      "accountId": string,
+      "policyId": string,
+      "description": string,
+      "version": int,
+      "policyType": string,
+      "policySettings": object array,
+    }
+  ]
+}
+</code></pre>
+
+__accountId__: Unknown.
+
+__policyId__: A unique identifier for the policy.
+
+__description__: A brief description of the policy.
+
+__version__: The version number of the policy.
+
+__policyType__: The type of policy (e.g., Configuration).
+
+__policySettings__: An array of policy settings, formatted as follows:
+
+<pre class="has-inner-focus">
+<code class="lang-json">{
+    "settingDefinitionReportingId": string,
+    "settingDefinitionItemId": string,
+    "cspPath": string,
+    "cspPathId": string,
+    "ruleId": string,
+    "ruleName": string,
+    "value": string
+}
+</code></pre>
+
+- __settingDefinitionReportingId__: A unique identifier used for reporting the setting's status.
+
+- __settingDefinitionItemId__: An identifier for the specific configuration item within the policy.
+
+- __cspPath__: A path indicating the Configuration Service Provider (CSP) namespace and the specific setting being configured.
+
+- __cspPathId__: A unique identifier for the CSP path, used for internal processing.
+
+- __ruleId__: A UUID that uniquely identifies the rule enforcing the setting.
+
+- __ruleName__: A human-readable name for the rule (may be null if unspecified).
+
+- __value__: The configured value for the setting (e.g., a numeric value or a string).
+
+##### 2.1.5.1.3 Processing Details
+
+Upon receiving a `GET` request to the `policies` endpoint, the LinuxDeviceCheckinService performs the following actions:
+
+1. **Authorization Validation**: Verifies that the bearer token is valid and scoped to the Microsoft Intune Company Portal Application.
+
+2. **Policy Retrieval**: Fetches the current policies assigned to the device. If no policies are available, an empty `policies` array is returned.
+
+3. **Response Construction**: Constructs a JSON object containing the device's policy details, including settings and their values.
+
+4. **Error Handling**: If the request is unauthorized or the token is invalid, an HTTP 401 Unauthorized status is returned.
 
 # 3 Protocol Examples
 
@@ -1048,6 +1170,165 @@ Content-type: application/json
             "uri": "https://fef.msua08.manage.microsoft.com/TrafficGateway/TrafficRoutingService/LinuxMdm/LinuxDeviceCheckinService"
         },
         ...
+    ]
+}
+</code></pre>
+
+## 3.5 Intune Linux Policies
+
+Retrieve device policies for the Linux Intune enrolled device.
+
+### HTTP Request
+
+<pre class="has-inner-focus">
+<code class="lang-http"><span>
+POST {LinuxDeviceCheckinServiceURI}/policies/{intune-device-id}?api-version=1.0&client-version=1.2405.17
+</span></code></pre>
+
+The request URL must utilize the `intune-device-id` provided during [Intune enrollment](#enroll-response-body).
+
+### Request Headers
+
+<table class="protocol-table"><thead>
+  <tr>
+   <th>
+   <p>Name</p>
+   </th>
+   <th>
+   <p>Description</p>
+   </th>
+  </tr>
+ </thead><tbody>
+ <tr>
+  <td>
+  <p>Content-type</p>
+  </td>
+  <td>
+  <p>application/json</p>
+  </td>
+ </tr>
+ <tr>
+  <td>
+  <p>Authorization</p>
+  </td>
+  <td>
+  <p>Bearer {token}. Required.</p>
+  </td>
+ </tr>
+</tbody></table>
+
+The authorization token MUST be granted via an on-behalf-of flow from an Entra
+Id enrolled host. The requested resource MUST be the Microsoft Intune Company
+Portal UUID and the on-behalf-of client-id MUST be the Microsoft Intune
+Company Portal for Linux UUID.
+
+<table class="protocol-table"><thead>
+
+  <tr>
+   <th>
+   <p>UUID</p>
+   </th>
+   <th>
+   <p>Description</p>
+   </th>
+  </tr>
+ </thead><tbody>
+ <tr>
+  <td>
+  <p>0000000a-0000-0000-c000-000000000000</p>
+  </td>
+  <td>
+  <p>Microsoft Intune Company Portal</p>
+  </td>
+ </tr>
+ <tr>
+  <td>
+  <p>b743a22d-6705-4147-8670-d92fa515ee2b</p>
+  </td>
+  <td>
+  <p>Microsoft Intune Company Portal for Linux</p>
+  </td>
+ </tr>
+</tbody></table>
+
+### Request body
+
+Empty.
+
+### Response
+
+If successful, this method returns a 200 response code and a list of policies, as specified in
+[section 2.1.5.1.2](#policies-response-body).
+
+### Example
+
+The following example shows a request to the Linux Device Checkin Service endpoint
+to request policies for the host ([section 2.1.5.1.1](#policies-request-body))
+and the response ([section 2.1.5.1.2](#policies-response-body)).
+
+### Request
+
+Here is an example of the request.
+
+<pre class="has-inner-focus">
+<code class="lang-json">GET https://fef.msua08.manage.microsoft.com/TrafficGateway/TrafficRoutingService/LinuxMdm/LinuxDeviceCheckinService/policies/e82e80fe-1654-4766-848e-5e4db9a941ca?api-version=1.0&client-version=1.2405.17
+</code></pre>
+
+### Response
+
+Here is an example of the response.
+
+<pre class="has-inner-focus">
+<code class="lang-json">HTTP/1.1 200
+Content-type: application/json
+
+{
+    "policies": [
+        {
+            "accountId": "1c2e9bb8-e414-4c34-8099-c418da11fed7",
+            "description": "",
+            "policyId": "6199d7d9-50dc-4bc6-bc83-0dc0a7dcfa0c",
+            "policySettings": [
+                {
+                    "cspPath": "com.microsoft.manage.LinuxMdm/CustomConfig/ExecutionContext",
+                    "cspPathId": "06e9a9b2-c7c1-adb6-97a0-92d2252471f3",
+                    "ruleId": "c2586150-9f54-4df5-b380-1fb859e80453",
+                    "ruleName": null,
+                    "settingDefinitionItemId": "linux_customconfig_executioncontext",
+                    "settingDefinitionReportingId": "efcc8ee0-59c0-d131-2f84-66ee74b42b76",
+                    "value": "root"
+                },
+                {
+                    "cspPath": "com.microsoft.manage.LinuxMdm/CustomConfig/ExecutionFrequency",
+                    "cspPathId": "58d19221-5453-8470-9d27-2958af46929a",
+                    "ruleId": "da026c44-bf31-4d94-a8f9-e86f214372b4",
+                    "ruleName": null,
+                    "settingDefinitionItemId": "linux_customconfig_executionfrequency",
+                    "settingDefinitionReportingId": "b91dfb94-3b90-99c4-213e-91ddd841dac6",
+                    "value": "10080"
+                },
+                {
+                    "cspPath": "com.microsoft.manage.LinuxMdm/CustomConfig/ExecutionRetries",
+                    "cspPathId": "6d36cb3a-f3cd-4189-6362-f7eafc25a01d",
+                    "ruleId": "a56d05f5-43c4-478b-a1df-f9fd55fd9791",
+                    "ruleName": null,
+                    "settingDefinitionItemId": "linux_customconfig_executionretries",
+                    "settingDefinitionReportingId": "f2a8e32f-3466-4a41-9f79-8fcf0d408f1f",
+                    "value": "3"
+                },
+                {
+                    "cspPath": "com.microsoft.manage.LinuxMdm/CustomConfig/Script",
+                    "cspPathId": "24011ceb-c800-5975-b6ef-f0ceaf1a40f5",
+                    "ruleId": "89da1038-5ebf-4981-8bca-40e284b60872",
+                    "ruleName": null,
+                    "settingDefinitionItemId": "linux_customconfig_script",
+                    "settingDefinitionReportingId": "dcdf28eb-a3dc-763b-a0f7-83552ffdd00c",
+                    "value": "IyEvYmluL3NoCgpleGl0IDAK"
+                }
+            ],
+            "policyType": "Configuration",
+            "version": 9
+        }
     ]
 }
 </code></pre>
