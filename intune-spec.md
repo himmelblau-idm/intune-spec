@@ -132,6 +132,19 @@ Intune for Linux enrollment and checkin specification
   <td>
   <p>
 
+ <tr>
+  <td>
+  <p>05/12/2025</p>
+  </td>
+  <td>
+  <p>0.04</p>
+  </td>
+  <td>
+  <p>Status reporting details documented</p>
+  </td>
+  <td>
+  <p>
+
   </p>
   </td>
  </tr>
@@ -395,7 +408,7 @@ The following HTTP methods are allowed to be performed on this resource.
   <p>2.1.3.1</p>
   </td>
   <td>
-  <p>Check the status of Intune policy enforcement.</p>
+  <p>Report the status of Intune policy enforcement.</p>
   </td>
  </tr>
 </tbody></table>
@@ -413,11 +426,57 @@ The request body contains the following JSON-formatted object.
 
 <pre class="has-inner-focus">
 <code class="lang-json">{
-  "DeviceId": string
+  "DeviceId": string,
+  "policyStatuses": array
 }
 </code></pre>
 
 __DeviceId__: The Intune Device ID. Required.
+
+__policyStatuses__: A list of statuses indicating policy enforcement compliance.
+
+Each entry in the `policyStatuses` array is an object formatted as follows:
+
+<pre class="has-inner-focus">
+<code class="lang-json">{
+    "details": array,
+    "lastStatusDateTime": string,
+    "policyId": string
+}
+</code></pre>
+
+- __details__: An array of objects providing detailed compliance information for
+individual rules within the policy. Each details object is formatted as follows:
+
+  <pre class="has-inner-focus">
+  <code class="lang-json">{
+      "actualValue": string,
+      "expectedValue": string,
+      "newComplianceState": string,
+      "oldComplianceState": string,
+      "ruleId": string,
+      "settingDefinitionItemId": string,
+      "errorCode": string,
+      "errorType": string
+  }
+  </code></pre>
+
+  - __actualValue__: The actual value reported by the device.
+  - __expectedValue__: The expected value as defined by the policy.
+  - __newComplianceState__: The current compliance state (e.g., "Compliant", "NonCompliant", "Error").
+  - __oldComplianceState__: The previous compliance state before the current status update (e.g. "Unknown").
+  - __ruleId__: A UUID uniquely identifying the rule being evaluated.
+  - __settingDefinitionItemId__: An identifier for the specific configuration item within the policy.
+  - __errorCode__: Optional. An integer indicating the error code associated with the compliance check (0 if no error).
+  - __errorType__: Optional. An integer indicating the type of error encountered (0 if no error).
+
+- __lastStatusDateTime__: The timestamp indicating when the status was last reported.
+
+- __policyId__: A unique identifier for the policy being reported.
+
+These values are
+derived from policies retrieved via the [policies](#policies-response-body)
+endpoint.
 
 ##### 2.1.3.1.2 <a id="status-response-body"></a> Response Body
 
@@ -432,7 +491,8 @@ JSON-formatted object, as defined below. See section
 }
 </code></pre>
 
-__policyStatuses__: A list of statuses for policy enforcement actions.
+__policyStatuses__: A list of statuses for policy enforcement actions. The
+response echoes the received statuses to acknowledge receipt and processing.
 
 ##### 2.1.3.1.3 <a id="status-processing-details"></a> Processing Details
 
@@ -456,7 +516,10 @@ Upon receiving a valid request, the server performs the following processing ste
    - The response body contains a `policyStatuses` array. If no actions are pending or applicable, this array is empty.
    - The schema of individual `policyStatuses` entries is currently undocumented and may vary based on tenant policy configurations and device state.
 
-This endpoint is intended for polling the current policy enforcement state and does not initiate compliance evaluation or configuration deployment. Clients should ensure the device has completed enrollment and reported host details before using this endpoint.
+This endpoint is used to report the current compliance status of policies and
+does not trigger policy enforcement. Clients should ensure that devices have
+fetched the latest policy definitions via the [`policies`](#policies) endpoint
+before submitting compliance status reports.
 
 ### 2.1.4 Intune Service Endpoint Discovery
 
@@ -554,7 +617,7 @@ Upon a successful response, the client MUST:
 
 If the service does not return the expected capabilities, the client MUST treat the response as non-actionable and fail gracefully.
 
-## 2.1.5 policies
+## 2.1.5 <a id="policies"></a> policies
 
 The following HTTP methods are allowed to be performed on this resource.
 
@@ -1022,7 +1085,101 @@ Here is an example of the request.
 Content-type: application/json
 
 {
-  "DeviceId": "8077ec2c-abca-46d2-9621-a0f06a460f96"
+  "DeviceId": "8077ec2c-abca-46d2-9621-a0f06a460f96",
+    "policyStatuses": [
+        {
+            "details": [
+                {
+                    "actualValue": "IyEvYmluL3NoCgpleGl0IDAK",
+                    "expectedValue": "IyEvYmluL3NoCgpleGl0IDAK",
+                    "newComplianceState": "Compliant",
+                    "oldComplianceState": "Unknown",
+                    "ruleId": "89da1038-5ebf-4981-8bca-40e284b60872",
+                    "settingDefinitionItemId": "linux_customconfig_script"
+                }
+            ],
+            "lastStatusDateTime": "2025-05-12T15:52:31+00:00",
+            "policyId": "6199d7d9-50dc-4bc6-bc83-0dc0a7dcfa0c"
+        },
+        {
+            "details": [
+                {
+                    "actualValue": "",
+                    "expectedValue": "",
+                    "newComplianceState": "Compliant",
+                    "oldComplianceState": "Unknown",
+                    "ruleId": "ce8d2180-58a4-4d92-8052-5318a74ec35b",
+                    "settingDefinitionItemId": "linux_distribution_alloweddistros_item_maximumversion"
+                },
+                {
+                    "actualValue": "",
+                    "expectedValue": "",
+                    "newComplianceState": "Compliant",
+                    "oldComplianceState": "Unknown",
+                    "ruleId": "563e0ace-a342-45d2-a5f8-4769660607a3",
+                    "settingDefinitionItemId": "linux_distribution_alloweddistros_item_minimumversion"
+                },
+                {
+                    "actualValue": "ubuntu",
+                    "expectedValue": "ubuntu",
+                    "newComplianceState": "Compliant",
+                    "oldComplianceState": "Unknown",
+                    "ruleId": "ece25d4a-6d2f-4c88-9051-06e044fb9740",
+                    "settingDefinitionItemId": "linux_distribution_alloweddistros_item_$type"
+                },
+                {
+                    "actualValue": "True",
+                    "expectedValue": "True",
+                    "newComplianceState": "Compliant",
+                    "oldComplianceState": "Unknown",
+                    "ruleId": "cf4fb087-40ca-49af-a1d2-2b9163f0ded5",
+                    "settingDefinitionItemId": "linux_deviceencryption_required"
+                },
+                {
+                    "actualValue": "4",
+                    "expectedValue": "4",
+                    "newComplianceState": "Compliant",
+                    "oldComplianceState": "Unknown",
+                    "ruleId": "6277da27-719c-4d82-a659-6e652041a829",
+                    "settingDefinitionItemId": "linux_passwordpolicy_minimumdigits"
+                },
+                {
+                    "actualValue": "8",
+                    "expectedValue": "8",
+                    "newComplianceState": "Compliant",
+                    "oldComplianceState": "Unknown",
+                    "ruleId": "f91a4914-1630-4f62-b33a-ca8a48a7b6d1",
+                    "settingDefinitionItemId": "linux_passwordpolicy_minimumlength"
+                },
+                {
+                    "actualValue": "2",
+                    "expectedValue": "2",
+                    "newComplianceState": "Compliant",
+                    "oldComplianceState": "Unknown",
+                    "ruleId": "ec02c30f-f361-48d7-bfbb-f5b0c0f0f3fc",
+                    "settingDefinitionItemId": "linux_passwordpolicy_minimumlowercase"
+                },
+                {
+                    "actualValue": "2",
+                    "expectedValue": "2",
+                    "newComplianceState": "Compliant",
+                    "oldComplianceState": "Unknown",
+                    "ruleId": "573f4d7d-9eda-4e35-81ab-6b0d240e0750",
+                    "settingDefinitionItemId": "linux_passwordpolicy_minimumsymbols"
+                },
+                {
+                    "actualValue": "2",
+                    "expectedValue": "2",
+                    "newComplianceState": "Compliant",
+                    "oldComplianceState": "Unknown",
+                    "ruleId": "29500bbf-127a-4212-a2da-5cd86132b3d9",
+                    "settingDefinitionItemId": "linux_passwordpolicy_minimumuppercase"
+                }
+            ],
+            "lastStatusDateTime": "2025-05-12T15:52:31+00:00",
+            "policyId": "f7101810-6170-491f-a40b-322d1cb363c1"
+        }
+    ]
 }
 </code></pre>
 
@@ -1035,7 +1192,120 @@ Here is an example of the response.
 Content-type: application/json
 
 {
-  "policyStatuses": []
+    "policyStatuses": [
+        {
+            "details": [
+                {
+                    "actualValue": "IyEvYmluL3NoCgpleGl0IDAK",
+                    "errorCode": 0,
+                    "errorType": 0,
+                    "expectedValue": "IyEvYmluL3NoCgpleGl0IDAK",
+                    "newComplianceState": "Compliant",
+                    "oldComplianceState": "Unknown",
+                    "ruleId": "89da1038-5ebf-4981-8bca-40e284b60872",
+                    "settingDefinitionItemId": "linux_customconfig_script"
+                }
+            ],
+            "lastStatusDateTime": "2025-05-12T15:52:31+00:00",
+            "policyId": "6199d7d9-50dc-4bc6-bc83-0dc0a7dcfa0c"
+        },
+        {
+            "details": [
+                {
+                    "actualValue": "",
+                    "errorCode": 0,
+                    "errorType": 0,
+                    "expectedValue": "",
+                    "newComplianceState": "Compliant",
+                    "oldComplianceState": "Unknown",
+                    "ruleId": "ce8d2180-58a4-4d92-8052-5318a74ec35b",
+                    "settingDefinitionItemId": "linux_distribution_alloweddistros_item_maximumversion"
+                },
+                {
+                    "actualValue": "",
+                    "errorCode": 0,
+                    "errorType": 0,
+                    "expectedValue": "",
+                    "newComplianceState": "Compliant",
+                    "oldComplianceState": "Unknown",
+                    "ruleId": "563e0ace-a342-45d2-a5f8-4769660607a3",
+                    "settingDefinitionItemId": "linux_distribution_alloweddistros_item_minimumversion"
+                },
+                {
+                    "actualValue": "ubuntu",
+                    "errorCode": 0,
+                    "errorType": 0,
+                    "expectedValue": "ubuntu",
+                    "newComplianceState": "Compliant",
+                    "oldComplianceState": "Unknown",
+                    "ruleId": "ece25d4a-6d2f-4c88-9051-06e044fb9740",
+                    "settingDefinitionItemId": "linux_distribution_alloweddistros_item_$type"
+                },
+                {
+                    "actualValue": "True",
+                    "errorCode": 0,
+                    "errorType": 0,
+                    "expectedValue": "True",
+                    "newComplianceState": "Compliant",
+                    "oldComplianceState": "Unknown",
+                    "ruleId": "cf4fb087-40ca-49af-a1d2-2b9163f0ded5",
+                    "settingDefinitionItemId": "linux_deviceencryption_required"
+                },
+                {
+                    "actualValue": "4",
+                    "errorCode": 0,
+                    "errorType": 0,
+                    "expectedValue": "4",
+                    "newComplianceState": "Compliant",
+                    "oldComplianceState": "Unknown",
+                    "ruleId": "6277da27-719c-4d82-a659-6e652041a829",
+                    "settingDefinitionItemId": "linux_passwordpolicy_minimumdigits"
+                },
+                {
+                    "actualValue": "8",
+                    "errorCode": 0,
+                    "errorType": 0,
+                    "expectedValue": "8",
+                    "newComplianceState": "Compliant",
+                    "oldComplianceState": "Unknown",
+                    "ruleId": "f91a4914-1630-4f62-b33a-ca8a48a7b6d1",
+                    "settingDefinitionItemId": "linux_passwordpolicy_minimumlength"
+                },
+                {
+                    "actualValue": "2",
+                    "errorCode": 0,
+                    "errorType": 0,
+                    "expectedValue": "2",
+                    "newComplianceState": "Compliant",
+                    "oldComplianceState": "Unknown",
+                    "ruleId": "ec02c30f-f361-48d7-bfbb-f5b0c0f0f3fc",
+                    "settingDefinitionItemId": "linux_passwordpolicy_minimumlowercase"
+                },
+                {
+                    "actualValue": "2",
+                    "errorCode": 0,
+                    "errorType": 0,
+                    "expectedValue": "2",
+                    "newComplianceState": "Compliant",
+                    "oldComplianceState": "Unknown",
+                    "ruleId": "573f4d7d-9eda-4e35-81ab-6b0d240e0750",
+                    "settingDefinitionItemId": "linux_passwordpolicy_minimumsymbols"
+                },
+                {
+                    "actualValue": "2",
+                    "errorCode": 0,
+                    "errorType": 0,
+                    "expectedValue": "2",
+                    "newComplianceState": "Compliant",
+                    "oldComplianceState": "Unknown",
+                    "ruleId": "29500bbf-127a-4212-a2da-5cd86132b3d9",
+                    "settingDefinitionItemId": "linux_passwordpolicy_minimumuppercase"
+                }
+            ],
+            "lastStatusDateTime": "2025-05-12T15:52:31+00:00",
+            "policyId": "f7101810-6170-491f-a40b-322d1cb363c1"
+        }
+    ]
 }
 </code></pre>
 
