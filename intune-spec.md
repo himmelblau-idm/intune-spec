@@ -119,6 +119,10 @@ Intune for Linux enrollment and checkin specification
   <td>
   <p>
 
+  </p>
+  </td>
+ </tr>
+
  <tr>
   <td>
   <p>05/08/2025</p>
@@ -131,6 +135,10 @@ Intune for Linux enrollment and checkin specification
   </td>
   <td>
   <p>
+
+  </p>
+  </td>
+ </tr>
 
  <tr>
   <td>
