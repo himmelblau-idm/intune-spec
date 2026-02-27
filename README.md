@@ -6,7 +6,7 @@ Intune for Linux enrollment and checkin specification
 
 1. Install pandoc
 
-2. Install [wkhtmltopdf](https://github.com/wkhtmltopdf/packaging/releases/0.12.6-1)
+2. Install Google Chrome
 
 3. Run `make`
 
