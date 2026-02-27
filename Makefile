@@ -1,7 +1,7 @@
 all: intune-spec.pdf
 
 intune-spec.pdf: intune-spec.html
-	google-chrome --headless --disable-gpu --no-sandbox --print-to-pdf="$@" "file://$(CURDIR)/$<"
+	google-chrome --headless --disable-gpu --no-sandbox --no-pdf-header-footer --print-to-pdf="$@" "file://$(CURDIR)/$<"
 
 intune-spec.html: intune-spec.md
 	pandoc --from=markdown_mmd -Vcss= -Vpagetitle="Intune for Linux Specification" --standalone --to=html intune-spec.md >$@
