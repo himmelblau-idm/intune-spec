@@ -383,7 +383,7 @@ The service response MUST include `deviceId` and `certificate.certBlob`. Additio
 fields, including `certificate.thumbprint` and `renewPeriod`, MAY be present.
 
 __deviceId__: A UUID which uniquely identifies the Intune enrolled device. This is separate
-from the Entra Id enrolled device Id.
+from the Entra ID enrolled device Id.
 
 __certificate__: A property with the following fields.
 
@@ -422,7 +422,7 @@ Upon receiving the enrollment request, the server performs the following steps:
    - RSA 2048-bit public key
    - SHA256WithRSAEncryption signature
 3. **Generate Certificate**: If valid, a short-lived device management certificate is issued, signed by the Intune service.
-4. **Store Device Record**: A device record is created in the Intune backend and associated with the authenticatated Entra Id device object.
+4. **Store Device Record**: A device record is created in the Intune backend and associated with the authenticatated Entra ID device object.
 5. **Return Response**: The `deviceId`, encoded certificate, and renewal period are returned to the client.
 If any validation fails, an HTTP error status is returned.
 
@@ -985,7 +985,7 @@ POST {EnrollmentServiceURI}/enroll?api-version=1.0&client-version=1.2405.17
 </tbody></table>
 
 The authorization token MUST be granted via an on-behalf-of flow from an Entra
-Id enrolled host. The requested resource MUST be the Intune Enrollment
+ID enrolled host. The requested resource MUST be the Intune Enrollment
 Application UUID and the on-behalf-of client-id MUST be the Microsoft Intune
 Company Portal for Linux UUID.
 
@@ -1121,7 +1121,7 @@ POST {LinuxDeviceCheckinServiceURI}/details?api-version=1.0&client-version=1.240
 </tbody></table>
 
 The authorization token MUST be granted via an on-behalf-of flow from an Entra
-Id enrolled host. The requested resource MUST be the Microsoft Intune Company
+ID enrolled host. The requested resource MUST be the Microsoft Intune Company
 Portal UUID and the on-behalf-of client-id MUST be the Microsoft Intune
 Company Portal for Linux UUID.
 
@@ -1244,7 +1244,7 @@ POST {LinuxDeviceCheckinServiceURI}/status?api-version=1.0&client-version=1.2405
 </tbody></table>
 
 The authorization token MUST be granted via an on-behalf-of flow from an Entra
-Id enrolled host. The requested resource MUST be the Microsoft Intune Company
+ID enrolled host. The requested resource MUST be the Microsoft Intune Company
 Portal UUID and the on-behalf-of client-id MUST be the Microsoft Intune
 Company Portal for Linux UUID.
 
@@ -1569,7 +1569,7 @@ GET {MSGraph}/v1.0/servicePrincipals/appId=0000000a-0000-0000-c000-000000000000/
 </tbody></table>
 
 The authorization token MUST be granted via an on-behalf-of flow from an Entra
-Id enrolled host. The requested resource MUST be the Microsoft Graph UUID and
+ID enrolled host. The requested resource MUST be the Microsoft Graph UUID and
 the on-behalf-of client-id MUST be the Microsoft Intune Company Portal for
 Linux UUID.
 
@@ -1706,7 +1706,7 @@ The request URL must utilize the `intune-device-id` provided during [Intune enro
 </tbody></table>
 
 The authorization token MUST be granted via an on-behalf-of flow from an Entra
-Id enrolled host. The requested resource MUST be the Microsoft Intune Company
+ID enrolled host. The requested resource MUST be the Microsoft Intune Company
 Portal UUID and the on-behalf-of client-id MUST be the Microsoft Intune
 Company Portal for Linux UUID.
 
