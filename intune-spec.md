@@ -234,9 +234,26 @@ This protocol does not define an explicit negotiation handshake. Version behavio
 is driven by:
 
 - `api-version` query parameters on each endpoint.
-- `client-version` query parameters supplied by the calling client.
+- `client-version` or `ssp-version` query parameters carrying the caller
+  application version.
 - Presence of discovered service endpoints (`providerName`) indicating
   operation availability.
+
+Observed endpoint behavior is:
+
+- `enroll`, `details`, `status`, and `policies`: `api-version=1.0` with
+  `client-version={AppVersion}`.
+- IWService compliance query: `api-version=16.4` with `ssp-version={AppVersion}`.
+
+`AppVersion` corresponds to the installed **MS Intune for Linux** package
+version. Current and historical package versions can be discovered from the
+Microsoft package repository:
+
+- <https://packages.microsoft.com/ubuntu/22.04/prod/pool/main/i/intune-portal/>
+
+Callers SHOULD prefer the latest available package version (for example,
+`1.2511.11`, last modified `2026-01-27` at time of writing) when sending
+`client-version`/`ssp-version` values.
 
 ## 1.7 Vendor-Extensible Fields
 
@@ -402,7 +419,7 @@ On the client side, the following processing steps MUST be performed:
 1. **Generate CSR**: A [PKCS#10] certificate signing request MUST be generated using an RSA 2048-bit key, signed with SHA256WithRSAEncryption.
 
 2. **Prepare Enrollment Payload**:
-   - `AppVersion`: MUST be populated with the application version string (e.g., `1.2405.17`).
+   - `AppVersion`: MUST be populated with the application version string (e.g., `1.2511.11`).
    - `DeviceName`: SHOULD match the system hostname or other consistent identifier.
    - `CertificateSigningRequest`: MUST be base64-encoded with no surrounding PEM headers.
 
@@ -951,7 +968,7 @@ Enroll the authenticated Linux host for Intune policy enforcement.
 
 <pre class="has-inner-focus">
 <code class="lang-http"><span>
-POST {EnrollmentServiceURI}/enroll?api-version=1.0&client-version=1.2405.17
+POST {EnrollmentServiceURI}/enroll?api-version=1.0&client-version=1.2511.11
 </span></code></pre>
 
 ### Request Headers
@@ -1046,11 +1063,11 @@ readability.
 
 <pre class="has-inner-focus">
 <code class="lang-json">POST https://fef.msua08.manage.microsoft.com/TrafficGateway/TrafficRoutingService
-/LinuxMDM/LinuxEnrollmentService/enroll?api-version=1.0&client-version=1.2405.17
+/LinuxMDM/LinuxEnrollmentService/enroll?api-version=1.0&client-version=1.2511.11
 Content-type: application/json
 
 {
-  "AppVersion": "1.2405.17",
+  "AppVersion": "1.2511.11",
   "DeviceName": "MyPC",
   "CertificateSigningRequest": "MIICd...LWH31"
 }
@@ -1087,7 +1104,7 @@ Supply device details for the Linux Intune enrolled host.
 
 <pre class="has-inner-focus">
 <code class="lang-http"><span>
-POST {LinuxDeviceCheckinServiceURI}/details?api-version=1.0&client-version=1.2405.17
+POST {LinuxDeviceCheckinServiceURI}/details?api-version=1.0&client-version=1.2511.11
 </span></code></pre>
 
 ### Request Headers
@@ -1177,7 +1194,7 @@ Here is an example of the request.
 
 <pre class="has-inner-focus">
 <code class="lang-json">POST https://fef.msua08.manage.microsoft.com/TrafficGateway/TrafficRoutingService
-/LinuxMDM/LinuxDeviceCheckinService/details?api-version=1.0&client-version=1.2405.17
+/LinuxMDM/LinuxDeviceCheckinService/details?api-version=1.0&client-version=1.2511.11
 Content-type: application/json
 
 {
@@ -1210,7 +1227,7 @@ Check the status of Linux Intune policy enforcement.
 
 <pre class="has-inner-focus">
 <code class="lang-http"><span>
-POST {LinuxDeviceCheckinServiceURI}/status?api-version=1.0&client-version=1.2405.17
+POST {LinuxDeviceCheckinServiceURI}/status?api-version=1.0&client-version=1.2511.11
 </span></code></pre>
 
 ### Request Headers
@@ -1299,7 +1316,7 @@ Here is an example of the request.
 
 <pre class="has-inner-focus">
 <code class="lang-json">POST https://fef.msua08.manage.microsoft.com/TrafficGateway/TrafficRoutingService
-/LinuxMDM/LinuxDeviceCheckinService/status?api-version=1.0&client-version=1.2405.17
+/LinuxMDM/LinuxDeviceCheckinService/status?api-version=1.0&client-version=1.2511.11
 Content-type: application/json
 
 {
@@ -1670,7 +1687,7 @@ Retrieve device policies for the Linux Intune enrolled device.
 
 <pre class="has-inner-focus">
 <code class="lang-http"><span>
-GET {LinuxDeviceCheckinServiceURI}/policies/{intune-device-id}?api-version=1.0&client-version=1.2405.17
+GET {LinuxDeviceCheckinServiceURI}/policies/{intune-device-id}?api-version=1.0&client-version=1.2511.11
 </span></code></pre>
 
 The request URL must utilize the `intune-device-id` provided during [Intune enrollment](#enroll-response-body).
@@ -1760,7 +1777,7 @@ Here is an example of the request.
 
 <pre class="has-inner-focus">
 <code class="lang-json">GET https://fef.msua08.manage.microsoft.com/TrafficGateway/TrafficRoutingService
-/LinuxMDM/LinuxDeviceCheckinService/policies/e82e80fe-1654-4766-848e-5e4db9a941ca?api-version=1.0&client-version=1.2405.17
+/LinuxMDM/LinuxDeviceCheckinService/policies/e82e80fe-1654-4766-848e-5e4db9a941ca?api-version=1.0&client-version=1.2511.11
 </code></pre>
 
 ### Example Response
@@ -1830,7 +1847,7 @@ Query compliance state and noncompliant rules for the Linux Intune enrolled devi
 
 <pre class="has-inner-focus">
 <code class="lang-http"><span>
-GET {IWServiceURI}/Devices(guid'{intune-device-id}')?api-version=16.4&ssp=LinuxCP&ssp-version=1.2405.17&os=Linux&mgmt-agent=mdm
+GET {IWServiceURI}/Devices(guid'{intune-device-id}')?api-version=16.4&ssp=LinuxCP&ssp-version=1.2511.11&os=Linux&mgmt-agent=mdm
 </span></code></pre>
 
 The request URL must utilize the `intune-device-id` provided during [Intune enrollment](#enroll-response-body).
@@ -1919,7 +1936,7 @@ Here is an example of the request.
 
 <pre class="has-inner-focus">
 <code class="lang-json">GET https://fef.msua08.manage.microsoft.com/ReportingService/DataWarehouseFEService
-/deviceservice/Devices(guid'8077ec2c-abca-46d2-9621-a0f06a460f96')?api-version=16.4&ssp=LinuxCP&ssp-version=1.2405.17&os=Linux&mgmt-agent=mdm
+/deviceservice/Devices(guid'8077ec2c-abca-46d2-9621-a0f06a460f96')?api-version=16.4&ssp=LinuxCP&ssp-version=1.2511.11&os=Linux&mgmt-agent=mdm
 </code></pre>
 
 ### Example Response
