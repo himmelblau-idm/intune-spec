@@ -1177,7 +1177,7 @@ Here is an example of the request.
 
 <pre class="has-inner-focus">
 <code class="lang-json">POST https://fef.msua08.manage.microsoft.com/TrafficGateway/TrafficRoutingService
-/LinuxMdm/LinuxDeviceCheckinService/details?api-version=1.0&client-version=1.2405.17
+/LinuxMDM/LinuxDeviceCheckinService/details?api-version=1.0&client-version=1.2405.17
 Content-type: application/json
 
 {
@@ -1299,7 +1299,7 @@ Here is an example of the request.
 
 <pre class="has-inner-focus">
 <code class="lang-json">POST https://fef.msua08.manage.microsoft.com/TrafficGateway/TrafficRoutingService
-/LinuxMdm/LinuxDeviceCheckinService/status?api-version=1.0&client-version=1.2405.17
+/LinuxMDM/LinuxDeviceCheckinService/status?api-version=1.0&client-version=1.2405.17
 Content-type: application/json
 
 {
@@ -1655,7 +1655,7 @@ Content-type: application/json
             "providerId": "0000000a-0000-0000-c000-000000000000",
             "providerName": "LinuxDeviceCheckinService",
             "providerResourceId": "39c1e9b8-a589-49c7-8ccd-d16548ac78e1",
-            "uri": "https://fef.msua08.manage.microsoft.com/TrafficGateway/TrafficRoutingService/LinuxMdm/LinuxDeviceCheckinService"
+            "uri": "https://fef.msua08.manage.microsoft.com/TrafficGateway/TrafficRoutingService/LinuxMDM/LinuxDeviceCheckinService"
         },
         ...
     ]
@@ -1760,7 +1760,7 @@ Here is an example of the request.
 
 <pre class="has-inner-focus">
 <code class="lang-json">GET https://fef.msua08.manage.microsoft.com/TrafficGateway/TrafficRoutingService
-/LinuxMdm/LinuxDeviceCheckinService/policies/e82e80fe-1654-4766-848e-5e4db9a941ca?api-version=1.0&client-version=1.2405.17
+/LinuxMDM/LinuxDeviceCheckinService/policies/e82e80fe-1654-4766-848e-5e4db9a941ca?api-version=1.0&client-version=1.2405.17
 </code></pre>
 
 ### Example Response
