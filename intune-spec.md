@@ -235,25 +235,25 @@ is driven by:
 
 - `api-version` query parameters on each endpoint.
 - `client-version` or `ssp-version` query parameters carrying the caller
-  application version.
+  package/client version.
 - Presence of discovered service endpoints (`providerName`) indicating
   operation availability.
 
 Observed endpoint behavior is:
 
 - `enroll`, `details`, `status`, and `policies`: `api-version=1.0` with
-  `client-version={AppVersion}`.
-- IWService compliance query: `api-version=16.4` with `ssp-version={AppVersion}`.
+  `client-version={client-version}`.
+- IWService compliance query: `api-version=16.4` with `ssp-version={client-version}`.
 
-`AppVersion` corresponds to the installed **MS Intune for Linux** package
-version. Current and historical package versions can be discovered from the
-Microsoft package repository:
+The `client-version` and `ssp-version` query parameter values correspond to the
+installed **MS Intune for Linux** package version. Current and historical package
+versions can be discovered from the Microsoft package repository:
 
 - <https://packages.microsoft.com/ubuntu/22.04/prod/pool/main/i/intune-portal/>
 
-Callers SHOULD prefer the latest available package version (for example,
-`1.2511.11`, last modified `2026-01-27` at time of writing) when sending
-`client-version`/`ssp-version` values.
+Callers SHOULD prefer the latest available package version when sending
+`client-version`/`ssp-version` values. This does not necessarily match the
+`AppVersion` JSON property used by individual request bodies.
 
 ## 1.7 Vendor-Extensible Fields
 
@@ -364,15 +364,21 @@ The request body contains the following JSON-formatted object.
 }
 </code></pre>
 
-__AppVersion__: The version string of the calling application. Required.
+__AppVersion__: The version string supplied in the enrollment payload. Required.
+For the `enroll` endpoint, observed service behavior indicates that callers
+SHOULD set this value to `"0.0.0"`, independent of the `client-version` query
+parameter.
 
 __DeviceName__: The friendly name of the device. Required.
 
-__CertificateSigningRequest__: A property that contains a base64-encoded
+__CertificateSigningRequest__: A property that contains a literal PEM-encoded
 [PKCS#10](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-dvrj/6961b602-0255-438a-8e64-1ee6081d9b88#gt_30428780-593d-43f8-b187-58f64d2eae7d)
 certificate request
 [[RFC4211]](https://go.microsoft.com/fwlink/?LinkId=301568). The certificate
-request MUST use an
+request MUST include the `-----BEGIN CERTIFICATE REQUEST-----` and
+`-----END CERTIFICATE REQUEST-----` PEM boundaries, with line breaks represented
+as escaped newline characters when serialized in JSON. The certificate request
+MUST use an
 [RSA](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-dvrj/6961b602-0255-438a-8e64-1ee6081d9b88#gt_3f85a24a-f32a-4322-9e99-eba6ae802cd6)
 [public key algorithm](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-dvrj/6961b602-0255-438a-8e64-1ee6081d9b88#gt_46ef9374-f1be-4b5c-8389-489d594c7603)
 [[RFC8017]](https://go.microsoft.com/fwlink/?linkid=2164409) with a 2048-bit
@@ -390,14 +396,15 @@ response contains a JSON-formatted object, as defined below. See section
     "deviceId": string,
     "certificate": {
         "thumbprint": string,
-        "certBlob": byte array
-    },
-    "renewPeriod": int
+        "certBlob": byte array,
+        "renewPeriod": int
+    }
 }
 </code></pre>
 
 The service response MUST include `deviceId` and `certificate.certBlob`. Additional
-fields, including `certificate.thumbprint` and `renewPeriod`, MAY be present.
+fields, including `certificate.thumbprint` and `certificate.renewPeriod`, MAY be
+present.
 
 __deviceId__: A UUID which uniquely identifies the Intune enrolled device. This is separate
 from the Entra ID enrolled device Id.
@@ -407,10 +414,10 @@ __certificate__: A property with the following fields.
 - __thumbprint__: The SHA1 hash of the certificate
 [thumbprint](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-dvrj/6961b602-0255-438a-8e64-1ee6081d9b88#gt_a8d3bb6c-a2e2-44ae-ba3b-58ca861ab74f).
 
-- __certBlob__: An X.509 certificate signed by the Intune service as a base64-encoded
-DER-encoded byte array [[RFC4648]](https://go.microsoft.com/fwlink/?LinkId=90487).
+- __certBlob__: An X.509 certificate signed by the Intune service as a
+DER-encoded byte array.
 
-__renewPeriod__: The period in which renewal is valid.
+- __renewPeriod__: The period in which renewal is valid.
 
 ##### 2.1.1.1.3 <a id="enrollment-processing-details"></a> Processing Details
 
@@ -419,9 +426,11 @@ On the client side, the following processing steps MUST be performed:
 1. **Generate CSR**: A [PKCS#10] certificate signing request MUST be generated using an RSA 2048-bit key, signed with SHA256WithRSAEncryption.
 
 2. **Prepare Enrollment Payload**:
-   - `AppVersion`: MUST be populated with the application version string (e.g., `1.2511.11`).
+   - `AppVersion`: SHOULD be populated with `"0.0.0"` for the `enroll` endpoint.
    - `DeviceName`: SHOULD match the system hostname or other consistent identifier.
-   - `CertificateSigningRequest`: MUST be base64-encoded with no surrounding PEM headers.
+   - `CertificateSigningRequest`: MUST be the literal PEM certificate signing
+     request, including PEM boundaries and newline separators serialized as JSON
+     string escapes.
 
 3. **Acquire Access Token**: The client MUST obtain a bearer token via the on-behalf-of flow targeting the `Intune Enrollment Application` resource ID.
 
@@ -430,12 +439,14 @@ On the client side, the following processing steps MUST be performed:
 5. **Parse Response**:
     - The client MUST extract the `deviceId` and persist it for future use.
     - The returned certificate MUST be re-assembled from the byte array and stored securely.
-    - If present, `renewPeriod` SHOULD be recorded to determine certificate renewal intervals.
+    - If present, `certificate.renewPeriod` SHOULD be recorded to determine
+      certificate renewal intervals.
 
 Upon receiving the enrollment request, the server performs the following steps:
 
 1. **Validate Access Token**: The service ensures the bearer token is valid and scoped to the Intune Enrollment Application.
-2. **Validate CSR**: The `CertificateSigningRequest` is parsed and validated against requirements:
+2. **Validate CSR**: The `CertificateSigningRequest` is parsed as PEM and
+   validated against requirements:
    - RSA 2048-bit public key
    - SHA256WithRSAEncryption signature
 3. **Generate Certificate**: If valid, a short-lived device management certificate is issued, signed by the Intune service.
@@ -968,7 +979,7 @@ Enroll the authenticated Linux host for Intune policy enforcement.
 
 <pre class="has-inner-focus">
 <code class="lang-http"><span>
-POST {EnrollmentServiceURI}/enroll?api-version=1.0&client-version=1.2511.11
+POST {EnrollmentServiceURI}/enroll?api-version=1.0&client-version={client-version}
 </span></code></pre>
 
 ### Request Headers
@@ -1063,13 +1074,13 @@ readability.
 
 <pre class="has-inner-focus">
 <code class="lang-json">POST https://fef.msua08.manage.microsoft.com/TrafficGateway/TrafficRoutingService
-/LinuxMDM/LinuxEnrollmentService/enroll?api-version=1.0&client-version=1.2511.11
+/LinuxMDM/LinuxEnrollmentService/enroll?api-version=1.0&client-version=1.2604.19
 Content-type: application/json
 
 {
-  "AppVersion": "1.2511.11",
+  "AppVersion": "0.0.0",
   "DeviceName": "MyPC",
-  "CertificateSigningRequest": "MIICd...LWH31"
+  "CertificateSigningRequest": "-----BEGIN CERTIFICATE REQUEST-----\nMIICd...LWH31\n-----END CERTIFICATE REQUEST-----\n"
 }
 </code></pre>
 
