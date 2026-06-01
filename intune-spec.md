@@ -157,7 +157,7 @@ Intune for Linux enrollment and check-in protocol specification.
   <p>0.05</p>
   </td>
   <td>
-  <p>Protocol corrections and compliance query documentation</p>
+  <p>Protocol corrections and device state query documentation</p>
   </td>
   <td>
   <p>
@@ -243,7 +243,7 @@ Observed endpoint behavior is:
 
 - `enroll`, `details`, `status`, and `policies`: `api-version=1.0` with
   `client-version={client-version}`.
-- IWService compliance query: `api-version=16.4` with `ssp-version={client-version}`.
+- IWService device state query: `api-version=16.4` with `ssp-version={client-version}`.
 
 The `client-version` and `ssp-version` query parameter values correspond to the
 installed **MS Intune for Linux** package version. Current and historical package
@@ -288,10 +288,12 @@ After enrollment, a protocol-conforming check-in cycle consists of:
 2. Retrieve assigned policies using `policies`.
 3. Evaluate policies locally and construct policy-status payloads.
 4. Submit policy-status results using `status`.
-5. Optionally query effective compliance information using `complianceInfo`.
+5. Optionally query effective device state using `deviceState`.
 
 The `status` operation reports per-policy and per-rule evaluation results,
-whereas `complianceInfo` returns the service-evaluated compliance view.
+whereas `deviceState` returns the service-evaluated device record, including
+compliance state, noncompliant rules, device metadata, and available IWService
+actions.
 
 ### 1.8.3 Authorization Context by Operation
 
@@ -300,7 +302,7 @@ Operations require different OAuth resource audiences:
 - Service endpoint discovery: Microsoft Graph (`00000003-0000-0000-c000-000000000000`)
 - Enrollment: Intune Enrollment Application (`d4ebce55-015a-49b5-a083-c84d1797ae8c`)
 - `details`, `policies`, `status`: Microsoft Intune Company Portal (`0000000a-0000-0000-c000-000000000000`)
-- `complianceInfo`: IWService (`b8066b99-6e67-41be-abfa-75db1a2c8809`)
+- `deviceState`: IWService (`b8066b99-6e67-41be-abfa-75db1a2c8809`)
 
 Callers SHOULD ensure the correct token audience is used for each operation
 before message submission.
@@ -311,7 +313,7 @@ before message submission.
 
 The resources in this section define a lifecycle-oriented protocol surface: one
 enrollment operation (`enroll`) and four post-enrollment operations (`details`,
-`policies`, `status`, and `complianceInfo`). The operations are specified
+`policies`, `status`, and `deviceState`). The operations are specified
 individually below and are intended to be composed using the sequence described
 in [1.8 Protocol Operation Sequence](#1.8-protocol-operation-sequence).
 
@@ -905,7 +907,7 @@ Upon receiving a `GET` request to the `policies` endpoint, the LinuxDeviceChecki
 
 4. **Error Handling**: If the request is unauthorized or the token is invalid, an HTTP 401 Unauthorized status is returned.
 
-### 2.1.6 Compliance Information Resource (`complianceInfo`)
+### 2.1.6 Device State Resource (`deviceState`)
 
 The following HTTP methods are allowed to be performed on this resource.
 
@@ -930,7 +932,7 @@ The following HTTP methods are allowed to be performed on this resource.
   <p>2.1.6.1</p>
   </td>
   <td>
-  <p>Query compliance state and noncompliant rules for an Intune enrolled device.</p>
+  <p>Query the IWService device record for an Intune enrolled device.</p>
   </td>
  </tr>
 </tbody></table>
@@ -942,28 +944,94 @@ This method is transported by an HTTP GET.
 The method is invoked through the IWService URI discovered
 via [Service Discovery](#service-endpoint-discovery-response-body).
 
+The request URL MUST address the OData `Devices` entity for the Intune Device ID
+returned by enrollment:
+
+<pre class="has-inner-focus">
+<code class="lang-http">GET {IWServiceURI}/Devices(guid'{intune-device-id}')?api-version=16.4&amp;ssp=LinuxCP&amp;ssp-version={client-version}&amp;os=Linux&amp;os-version={os-version}&amp;os-sub={os-subtype}&amp;arch={architecture}&amp;mgmt-agent=mdm
+</code></pre>
+
+The discovered `IWServiceURI` value can include an intermediate
+`StatelessIWService` path segment. Clients MUST preserve the discovered base URI
+and append the `Devices(guid'...')` entity path.
+
+The following query parameters are observed:
+
+- `api-version`: MUST be `16.4`.
+- `ssp`: SHOULD be `LinuxCP`.
+- `ssp-version`: SHOULD be the caller package/client version.
+- `os`: SHOULD be `Linux`.
+- `os-version`: SHOULD be the operating-system version string, for example
+  `24.04`.
+- `os-sub`: SHOULD be the operating-system subtype string when known. The
+  observed Linux value is `None`.
+- `arch`: SHOULD identify the processor architecture, for example `X64`.
+- `mgmt-agent`: SHOULD be `mdm`.
+
 ##### 2.1.6.1.1 Request Body
 
 Empty.
 
-##### 2.1.6.1.2 <a id="compliance-info-response-body"></a> Response Body
+##### 2.1.6.1.2 <a id="device-state-response-body"></a><a id="compliance-info-response-body"></a> Response Body
 
-The response is an OData JSON object describing the device record. The following
-fields are relevant to compliance evaluation:
+The response is an OData JSON object describing the IWService device record. The
+response is broader than a compliance-only payload and can include device
+metadata, management state, compliance state, and OData action targets.
 
-- `ComplianceState`: Current overall compliance state.
-- `NoncompliantRules`: A list of noncompliant rules, each rule including fields
-  such as `SettingID`, `ExpectedValue`, and optional metadata (`Title`,
-  `Description`, `MoreInfoUri`).
+The following fields are commonly relevant:
+
+- `odata.metadata`: The OData metadata URL for the response entity.
+- `odata.id`: The OData entity identifier for the device record.
+- `#CommonContainer.*`: OData action annotations. Observed actions include
+  `Retire`, `SetRD`, `CheckCompliance`, `SetOptIn`, `SetHeartBeat`,
+  `GetManagementState`, `RegisterForAppPushNotifications`,
+  `RemoveSignedDeviceIdPolicyAssignment`, and `UpdateAadId`. Each action object
+  contains a `title` and `target`.
+- `Key`: The Intune Device ID for the record.
+- `OfficialName`: The device display name.
+- `Manufacturer`, `Model`, `ChassisType`, `OperatingSystem`, `OSVersion`,
+  `OperatingSystemId`, `OSSubtype`, and `Architecture`: Device inventory
+  metadata. Some values MAY be null.
+- `ManagementType` and `ManagementAgent`: Management channel metadata. Observed
+  Linux MDM responses use `Mdm`.
+- `LastContact`, `LastContactNotification`, and `CreatedDate`: Service-side
+  timestamps.
+- `ComplianceState`: Current overall service-evaluated compliance state.
+- `NoncompliantRules`: A list of noncompliant rules. Each rule can include
+  `SettingID`, `Title`, `ExpectedValue`, `Description`, `MoreInfoUri`, and
+  `RemediationOwner`.
+- `AadId`: The associated Entra ID device ID.
+- `DeviceActions`: A list of queued or available device action records.
+- `OwnerType`, `IsReadOnly`, `IsSharedDevice`, `UdaStatus`, `EnrollmentType`,
+  `IsCompliantInGraph`, `IsManagedInGraph`, and
+  `InGracePeriodUntilDateTimeUtc`: Additional management and compliance
+  metadata.
+- Fields such as `Nickname`, `DeviceHWId`, `RemotableProperties`,
+  `AppWrapperCertSN`, `ExchangeActivationItemEasId`, `IsExchangeActivated`,
+  `EasId`, `ExchangeActivationItems`, `IsSspConfirmed`, `CategoryId`,
+  `CategorySetByEndUser`, `RemoteSessionUri`, `PartnerName`,
+  `PartnerSelfServicePortalUrl`, `PartnerRemediationUrl`, `IsPartnerManaged`,
+  `PartnerLocalizedSelfServicePortalName`, `CoManagementFeatures`,
+  `UserApprovedEnrollment`, and `SupervisedStatus` MAY be present and can be
+  null, empty, or default-valued when not applicable to Linux MDM.
+
+`IsCompliantInGraph` and `IsManagedInGraph` are Graph projection fields and MAY
+differ from the IWService `ComplianceState` and `ManagementAgent` values.
+
+Clients MUST ignore unrecognized fields and SHOULD treat absent or null fields
+as unspecified unless the field is required by local policy.
 
 ##### 2.1.6.1.3 Processing Details
 
 1. **Invocation URI**:
-   - `GET {IWService}/Devices(guid'{intune-device-id}')?api-version=16.4&ssp=LinuxCP&ssp-version={client-version}&os=Linux&mgmt-agent=mdm`
+   - `GET {IWServiceURI}/Devices(guid'{intune-device-id}')?api-version=16.4&ssp=LinuxCP&ssp-version={client-version}&os=Linux&os-version={os-version}&os-sub={os-subtype}&arch={architecture}&mgmt-agent=mdm`
 2. **Authorization Validation**:
    - The bearer token MUST be scoped to the IWService resource (`b8066b99-6e67-41be-abfa-75db1a2c8809`).
 3. **Response Interpretation**:
-   - The response includes compliance state information and noncompliant rule data for the specified device.
+   - The response includes the IWService device record for the specified device.
+     Compliance consumers SHOULD read `ComplianceState` and
+     `NoncompliantRules`; inventory consumers MAY use the additional device
+     metadata fields.
 
 # 3 Protocol Examples (Non-Normative)
 
@@ -1850,15 +1918,16 @@ Content-type: application/json
 }
 </code></pre>
 
-## 3.6 Query Compliance Information (`complianceInfo`)
+## 3.6 Query Device State (`deviceState`)
 
-Query compliance state and noncompliant rules for the Linux Intune enrolled device.
+Query the IWService device record for the Linux Intune enrolled device,
+including compliance state and noncompliant rules.
 
 ### HTTP Request
 
 <pre class="has-inner-focus">
 <code class="lang-http"><span>
-GET {IWServiceURI}/Devices(guid'{intune-device-id}')?api-version=16.4&ssp=LinuxCP&ssp-version=1.2511.11&os=Linux&mgmt-agent=mdm
+GET {IWServiceURI}/Devices(guid'{intune-device-id}')?api-version=16.4&ssp=LinuxCP&ssp-version={client-version}&os=Linux&os-version={os-version}&os-sub={os-subtype}&arch={architecture}&mgmt-agent=mdm
 </span></code></pre>
 
 The request URL must utilize the `intune-device-id` provided during [Intune enrollment](#enroll-response-body).
@@ -1877,7 +1946,7 @@ The request URL must utilize the `intune-device-id` provided during [Intune enro
  </thead><tbody>
  <tr>
   <td>
-  <p>Content-type</p>
+  <p>Accept</p>
   </td>
   <td>
   <p>application/json</p>
@@ -1934,20 +2003,19 @@ Empty.
 
 If successful, this method returns a 200 response code and an OData JSON object
 representing the Intune device record, as specified in
-[section 2.1.6.1.2](#compliance-info-response-body).
+[section 2.1.6.1.2](#device-state-response-body).
 
 ### Example Exchange
 
 The following example shows a request to the IWService endpoint to query
-compliance information for the host.
+device state for the host.
 
 ### Example Request
 
 Here is an example of the request.
 
 <pre class="has-inner-focus">
-<code class="lang-json">GET https://fef.msua08.manage.microsoft.com/ReportingService/DataWarehouseFEService
-/deviceservice/Devices(guid'8077ec2c-abca-46d2-9621-a0f06a460f96')?api-version=16.4&ssp=LinuxCP&ssp-version=1.2511.11&os=Linux&mgmt-agent=mdm
+<code class="lang-json">GET https://fef.msua08.manage.microsoft.com/TrafficGateway/TrafficRoutingService/IWService/StatelessIWService/Devices(guid'33ca45ed-7b2a-42d1-b96d-ab07aecf330a')?api-version=16.4&ssp=LinuxCP&ssp-version=1.2604.19&os=Linux&os-version=24.04&os-sub=None&arch=X64&mgmt-agent=mdm
 </code></pre>
 
 ### Example Response
@@ -1964,7 +2032,54 @@ readability.
 Content-type: application/json
 
 {
+    "odata.metadata": "https://fef.msua08.manage.microsoft.com/TrafficGateway/TrafficRoutingService/IWService/StatelessIWService/$metadata#Devices/@Element",
+    "odata.id": "urn:StatelessIWService/Devices(guid'33ca45ed-7b2a-42d1-b96d-ab07aecf330a')",
+    "#CommonContainer.Retire": {
+        "title": "Retire",
+        "target": "https://fef.msua08.manage.microsoft.com/TrafficGateway/TrafficRoutingService/IWService/StatelessIWService/Devices(guid'33ca45ed-7b2a-42d1-b96d-ab07aecf330a')/Retire"
+    },
+    "#CommonContainer.CheckCompliance": {
+        "title": "CheckCompliance",
+        "target": "https://fef.msua08.manage.microsoft.com/TrafficGateway/TrafficRoutingService/IWService/StatelessIWService/Devices(guid'33ca45ed-7b2a-42d1-b96d-ab07aecf330a')/CheckCompliance"
+    },
+    "#CommonContainer.SetHeartBeat": {
+        "title": "SetHeartBeat",
+        "target": "https://fef.msua08.manage.microsoft.com/TrafficGateway/TrafficRoutingService/IWService/StatelessIWService/Devices(guid'33ca45ed-7b2a-42d1-b96d-ab07aecf330a')/SetHeartBeat"
+    },
+    "Key": "33ca45ed-7b2a-42d1-b96d-ab07aecf330a",
+    "ChassisType": "Laptop",
+    "Manufacturer": "QEMU",
+    "Model": null,
+    "OfficialName": "dmulder-Standard-PC-i440FX-PIIX-1996",
+    "OperatingSystem": "Linux (ubuntu)",
+    "ManagementType": "Mdm",
+    "ManagementAgent": "Mdm",
+    "LastContact": "2026-05-28T16:34:45.0464061Z",
     "ComplianceState": "Compliant",
-    "NoncompliantRules": []
+    "NoncompliantRules": [
+        {
+            "SettingID": "DefaultDeviceCompliancePolicy.RequireDeviceCompliancePolicyAssigned",
+            "Title": "Compliance policies haven't been assigned to this device",
+            "ExpectedValue": "Reporting only, device will be noncompliant with policy assignment requirement.",
+            "Description": "Your device must receive compliance policies before it can be used to access your organization's resources. Contact your support person.",
+            "MoreInfoUri": "",
+            "RemediationOwner": 2
+        }
+    ],
+    "AadId": "3f9372d3-5dbe-49f2-be02-a46c5db34fec",
+    "OperatingSystemId": "Linux",
+    "OSSubtype": "None",
+    "CreatedDate": "2026-05-28T16:34:40.7308325Z",
+    "DeviceActions": [],
+    "OwnerType": 1,
+    "IsReadOnly": false,
+    "IsSharedDevice": false,
+    "UdaStatus": 2,
+    "OSVersion": "24.04",
+    "Architecture": null,
+    "IsCompliantInGraph": false,
+    "IsManagedInGraph": false,
+    "EnrollmentType": 0,
+    "InGracePeriodUntilDateTimeUtc": "0001-01-01T00:00:00Z"
 }
 </code></pre>
