@@ -301,7 +301,7 @@ Operations require different OAuth resource audiences:
 
 - Service endpoint discovery: Microsoft Graph (`00000003-0000-0000-c000-000000000000`)
 - Enrollment: Intune Enrollment Application (`d4ebce55-015a-49b5-a083-c84d1797ae8c`)
-- `details`, `policies`, `status`: Microsoft Intune Company Portal (`0000000a-0000-0000-c000-000000000000`)
+- `details`, `policies`, `status`: Microsoft Intune (`0000000a-0000-0000-c000-000000000000`)
 - `deviceState`: IWService (`b8066b99-6e67-41be-abfa-75db1a2c8809`)
 
 Callers SHOULD ensure the correct token audience is used for each operation
@@ -899,7 +899,7 @@ service responses and are not required for policy-status submission.
 
 Upon receiving a `GET` request to the `policies` endpoint, the LinuxDeviceCheckinService performs the following actions:
 
-1. **Authorization Validation**: Verifies that the bearer token is valid and scoped to the Microsoft Intune Company Portal Application.
+1. **Authorization Validation**: Verifies that the bearer token is valid and scoped to the Microsoft Intune resource.
 
 2. **Policy Retrieval**: Fetches the current policies assigned to the device. If no policies are available, an empty `policies` array is returned.
 
@@ -1237,7 +1237,7 @@ Company Portal for Linux UUID.
   <p>0000000a-0000-0000-c000-000000000000</p>
   </td>
   <td>
-  <p>Microsoft Intune Company Portal</p>
+  <p>Microsoft Intune</p>
   </td>
  </tr>
  <tr>
@@ -1360,7 +1360,7 @@ Company Portal for Linux UUID.
   <p>0000000a-0000-0000-c000-000000000000</p>
   </td>
   <td>
-  <p>Microsoft Intune Company Portal</p>
+  <p>Microsoft Intune</p>
   </td>
  </tr>
  <tr>
@@ -1822,7 +1822,7 @@ Company Portal for Linux UUID.
   <p>0000000a-0000-0000-c000-000000000000</p>
   </td>
   <td>
-  <p>Microsoft Intune Company Portal</p>
+  <p>Microsoft Intune</p>
   </td>
  </tr>
  <tr>
